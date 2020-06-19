@@ -35,11 +35,11 @@ pbmc <- FindVariableFeatures(pbmc, selection.method = "vst", nfeatures = 2000)
 #show the 10 most highly variable genes
 top10 <- head(VariableFeatures(pbmc), 10)
 
-plot1 <- VariableFeaturePlot(pbmc)
-plot2 <- LabelPoints(plot = plot1, points = top10, repel = TRUE)
-# add the plots together so we can see both, call it p2 and print it so it displays (Weird hack not sure why R needs this)
-p2  <- plot1 + plot2
-print(p2)
+# plot1 <- VariableFeaturePlot(pbmc)
+# plot2 <- LabelPoints(plot = plot1, points = top10, repel = TRUE)
+# #add the plots together so we can see both, call it p2 and print it so it displays (Weird hack not sure why R needs this)
+# p2  <- plot1 + plot2
+# print(p2)
 
 
 #downstream analysis continue with scaling the data
@@ -57,3 +57,40 @@ print(pbmc[["pca"]], dims = 1:5, nfeatures = 5)
 print(VizDimLoadings(pbmc, dims = 1:2, reduction = "pca"))
 
 print(DimPlot(pbmc, reduction = "pca"))
+
+#this prints the pbmc pca but highlights the selected feature
+print(FeaturePlot(object = pbmc, features = "MS4A1"))
+
+#elbow plot
+print(ElbowPlot(pbmc))
+
+
+#cluster cells based on nearest neighbours algo
+pbmc <- FindNeighbors(pbmc, dims = 1:10)
+pbmc <- FindClusters(pbmc, resolution = 0.5)
+
+#run non-linear dimensional reduction uMAP
+pbmc <- RunUMAP(pbmc, dims = 1:10)
+
+print(DimPlot(pbmc, reduction = "umap"))
+
+#save object so we dont have to reload / rerurn everything we did above
+# saveRDS(pbmc, file = "../output/pbmc_tutorial.rds")
+
+cluster1.markers <- FindMarkers(pbmc, ident.1 = 1, min.pct = 0.25)
+head(cluster1.markers, n = 5)
+
+cluster5.markers <- FindMarkers(pbmc, ident.1 = 5, ident.2 = c(0, 3), min.pct = 0.25)
+head(cluster5.markers, n = 5)
+
+pbmc.markers <- FindAllMarkers(pbmc, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
+pbmc.markers %>% group_by(cluster) %>% top_n(n = 2, wt = avg_logFC)
+
+cluster1.markers <- FindMarkers(pbmc, ident.1 = 0, logfc.threshold = 0.25, test.use = "roc", only.pos = TRUE)
+
+new.cluster.ids <- c("Naive CD4 T", "Memory CD4 T", "CD14+ Mono", "B", "CD8 T", "FCGR3A+ Mono", 
+                     "NK", "DC", "Platelet")
+names(new.cluster.ids) <- levels(pbmc)
+pbmc <- RenameIdents(pbmc, new.cluster.ids)
+print(DimPlot(pbmc, reduction = "umap", label = TRUE, pt.size = 0.5) + NoLegend())
+
